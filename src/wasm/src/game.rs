@@ -14,7 +14,7 @@ use crate::engine::{
 };
 //use crate::common;
 use crate::common::{
-    MAZE_SIZE,FRAME_TERM,OPENING_TITLE_X,OPENING_TITLE_Y,OPENING_TITLE,OPENING_MESSAGE_X,OPENING_MESSAGE_Y,OPENING_MESSAGE,GAMEOVER_MESSAGE_X,GAMEOVER_MESSAGE_Y,GAMEOVER_MESSAGE, MAP_X,MAP_Y,MAP_WIDTH, MAZE_MAP, GROUND_MAP,
+    MAZE_SIZE,FRAME_TERM,OPENING_TITLE_X,OPENING_TITLE_Y,OPENING_TITLE,OPENING_MESSAGE_X,OPENING_MESSAGE_Y,OPENING_MESSAGE,GAMEOVER_MESSAGE_X,GAMEOVER_MESSAGE_Y,GAMEOVER_MESSAGE, MAP_X,MAP_Y,MAP_WIDTH, MAZE_MAP, GROUND_MAP, GROUND_START_FRAME,
 };
 use web_sys::HtmlImageElement;
 
@@ -327,7 +327,6 @@ enum RunningEndState {
     Focusing(GameStageState<Focusing>),
     GameOver(GameStageState<GameOver>),
     Escape(GameStageState<Escape>),
-    //GameClear(GameStageState<GameClear>),
 }
 struct GameOver;
 impl GameStageState<GameOver> {
@@ -359,9 +358,6 @@ impl From<GameOverEndState> for GameStageStateMachine {
 }
 struct Escape;
 impl GameStageState<Escape> {
-    fn start_running(self) -> GameStageState<GameClear> {
-        GameStageState { _state: GameClear, material: self.material,}
-    }
     fn update(mut self, _keystate: &KeyState) -> EscapeEndState {
         self.material.frame += 1;
         let mut _p = self.material.p;
@@ -370,8 +366,6 @@ impl GameStageState<Escape> {
         let mut _effect = self.material.effect;
         let mut _out_box = self.material.out_box;
 
-        // INPUT KEY
-        // camera moves forward
         if _keystate.is_pressed("ArrowUp") {
             match self.material.d {
                 'n' => {
@@ -385,9 +379,7 @@ impl GameStageState<Escape> {
                 _ =>{}
             }
         }
-        // camera moves back
         if _keystate.is_pressed("ArrowDown") {
-            log!("PASS BACK");
             match self.material.d {
                 's' => {
                     _p -= MAZE_SIZE;
@@ -395,7 +387,6 @@ impl GameStageState<Escape> {
                 _ =>{}
             }
         }
-        // camera moves left
         if _keystate.is_pressed("ArrowLeft") {
             match self.material.d {
                 'n' => { _d = 'w';},
@@ -499,91 +490,6 @@ impl From<GameClearEndState> for GameStageStateMachine {
     }
 }
 
-#[derive(Copy, Clone)]
-pub struct Context {
-    pub x: usize,
-    pub y: usize,
-}
-impl Context {
-    fn update(self) -> Self {
-        self
-    }
-    fn run(mut self, x: usize, y: usize) -> Self {
-        self.x = x;
-        self.y = y;
-        self
-    }
-}
-
-
-#[derive(Copy, Clone)]
-pub struct State<S> {
-    pub context: Context,
-    _state: S,
-}
-impl<S> State<S> {
-    pub fn context(&self) -> &Context {
-        &self.context
-    }
-    fn update_context(&mut self){
-        self.context = self.context.update();
-    }
-}
-pub enum Event {
-    Run(usize, usize),
-    Update,
-}
-
-#[derive(Copy, Clone)]
-pub enum StateMachine{
-    Running(State<Running>),
-}
-#[derive(Copy, Clone)]
-pub struct Running;
-impl State<Running> {
-    pub fn new(x: usize, y: usize) -> Self {
-        State {
-            context: Context{
-                x: x,
-                y: y,
-            },
-            _state: Running {},
-        }
-    }
-    pub fn update(self)  -> State<Running> {
-        //self.update_context();
-        self
-    }
-    pub fn run(self, x: usize, y: usize) -> State<Running> {
-        State {
-            context: self.context.run(x, y),
-            _state: Running{},
-        }
-    }
-}
-
-impl StateMachine {
-    fn transition(self, event: Event) -> Self {
-        match (self.clone(), event) {
-            (StateMachine::Running(state), Event::Run(x, y))=> state.run(x, y).into(),
-            (StateMachine::Running(state), Event::Update) => state.update().into(),
-            //_ => self,
-        }
-    }
-    pub fn context(&self) -> &Context {
-        match self {
-            StateMachine::Running(state) => state.context(),
-        }
-    }
-    fn update(self) -> Self {
-        self.transition(Event::Update)
-    }
-}
-impl From<State<Running>> for StateMachine{
-    fn from(state: State<Running>) -> Self {
-        StateMachine::Running(state)
-    }
-}
 pub struct Material {
     frame: i32,         // Timer
     maze: Maze,         // maze
@@ -592,8 +498,8 @@ pub struct Material {
     m: char,            // messaage display flag
     stage: char,        // m: maze, g: ground
     effect: bool,       // belogings
-    out_box: bool,       // hide in box
-    map: Map,   // show map
+    out_box: bool,      // hide in box
+    map: Map,           // show map
     message: Message,   // message
     ghosts: Vec<Ghost>, // Ghost Character
     image: HtmlImageElement, // HTML OUTPUT IMAGE FOR CHARACTER
@@ -642,7 +548,7 @@ impl Game for GameStage {
         log!("START");
         match &self.machine {
             _none => {
-                let screen = engine::load_image("/static/screen.svg");
+                let screen = engine::load_image("./static/screen.svg");
                 let machine = GameStageStateMachine::new(
                     Material::new(screen.await.unwrap()),
                 );

@@ -48,14 +48,13 @@ pub struct Sheet {
 }
 */
 
+/*
 #[derive(Default)]
 pub struct Rect {
     pub position: Point,
-//    pub width: i16,
-//    pub height: i16,
+    pub width: i16,
+    pub height: i16,
 }
-
-/*
 impl Rect {
     pub const fn new(position: Point, width: i16, height: i16) -> Self {
         Rect {
@@ -72,11 +71,13 @@ pub struct Point {
     pub x: f32,
     pub y: f32,
 }
+/*
 impl Point{
     pub fn new(x: f32, y: f32) -> Point {
         Point { x: x, y: y }
     }
 }
+*/
 
 pub struct Renderer {
     context: CanvasRenderingContext2d,
@@ -130,6 +131,7 @@ impl Renderer {
         }
         let _ = self.context.fill_text(text, point.x as f64, point.y as f64);
     }
+    /*
     pub fn line(&self, p: &Point, q: &Point, color: &str) {
         self.context.begin_path();
         self.context.set_stroke_style(&JsValue::from(color));
@@ -138,6 +140,7 @@ impl Renderer {
         self.context.close_path();
         self.context.stroke();
     }
+    */
     pub fn rect(&self, p: &Point, width: f32, height: f32, color: &str, alpha: f64) {
         self.context.set_global_alpha(alpha.into()); 
         self.context.set_stroke_style(&JsValue::from(color));

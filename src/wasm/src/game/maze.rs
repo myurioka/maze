@@ -4,7 +4,7 @@ use wall::wall::*;
 pub mod maze {
     use crate::game::maze::Wall;
     use crate::game::Ghost;
-    use crate::game::{Renderer, Point, MAZE_SIZE, GREEN_DARK_MIDDLE, HtmlImageElement};
+    use crate::game::{Renderer, Point, MAZE_SIZE, GREEN_DARK_MIDDLE, HtmlImageElement, GROUND_START_FRAME};
 
     #[derive(Clone, Copy)]
     pub struct Maze {
@@ -15,9 +15,6 @@ pub mod maze {
             Maze {
                 maze: _maze,
             }
-        }
-        pub fn get_position_value(&self, _p:usize) -> usize{
-            self.maze[_p]
         }
         pub fn get_start_position(&self) -> usize {
             self.maze.iter().position(|&x| x == 2).unwrap()
@@ -51,15 +48,8 @@ pub mod maze {
             let _maze = self.maze.clone();
             _maze
         }
-        pub fn set_maze(&mut self, _maze: [usize; MAZE_SIZE * MAZE_SIZE]){
-            self.maze = _maze
-        }
         pub fn check_wall(&self, _p:usize) -> bool {
             if self.maze[_p] == 1 { return false; }
-            return true;
-        }
-        pub fn check_direction_for_ghost(&self, _p:usize) -> bool {
-            if self.maze[_p] != 0 { return false; }
             return true;
         }
         pub fn check_goal(&self, _p:usize) -> bool {
@@ -429,28 +419,11 @@ pub mod maze {
                     }
                 }
                 's' => {
-                    //if self.maze[_p + 3 * MAZE_SIZE] == 1 {
-                        let _ = renderer.draw_image(
-                            &image, 100.0, 100.0, 130.0, 100.0, 0.0, 0.0, 450.0, 400.0,
-                        );
-                    //}
-                    //if self.maze[_p + 2 * MAZE_SIZE] == 1 {
-                    //    let _ = renderer.draw_image(
-                    //        &image, 100.0, 100.0, 130.0, 100.0, 0.0, 0.0, 450.0, 400.0,);
-                    //}
-                    if self.maze[_p + 2 * MAZE_SIZE] == 8 {
-                        if *_f > 5 {
-                            let _ = renderer.draw_image(
-                                &image, 100.0, 600.0, 100.0, 200.0, 30.0, 0.0, 350.0, 650.0,
-                            );
-                        } else {
-                            let _ = renderer.draw_image(
-                                &image, 100.0, 400.0, 100.0, 200.0, 30.0, 0.0, 350.0, 650.0,
-                            );
-                        }
-                    }
-                    if self.maze[_p + MAZE_SIZE] == 8 {
-                        if *_f > 5 {
+                    let _ = renderer.draw_image(
+                        &image, 100.0, 100.0, 130.0, 100.0, 0.0, 0.0, 450.0, 400.0,
+                    );
+                    if self.maze[_p + MAZE_SIZE] == 3 {
+                        if *_f > GROUND_START_FRAME {
                             let _ = renderer.draw_image(
                                 &image, 100.0, 600.0, 100.0, 200.0, 30.0, -10.0, 350.0, 650.0,
                             );
@@ -460,43 +433,19 @@ pub mod maze {
                             );
                         }
                     }
-                    /*
-                    _pt = _p + 3 * MAZE_SIZE;
-                    ghosts.iter().for_each(|_g| {
-                        if _g.get_position() == _pt {
-                            Self::draw_image_1(
-                                renderer,
-                                &1, 
-                                _g.get_type(),
-                                &image
-                            )
-                        }
-                    });
-                    */
-                    /*
-                    _pt = _p + 2 * MAZE_SIZE;
-                    ghosts.iter().for_each(|_g| {
-                        if _g.get_position() == _pt {
-                            Self::draw_image_2(
-                                renderer,
-                                &1, 
-                                _g.get_type(),
-                                &image
-                            )
-                        }
-                    });
-                    */
-                    _pt = _p + 1 * MAZE_SIZE;
-                    ghosts.iter().for_each(|_g| {
-                        if _g.get_position() == _pt {
-                            Self::draw_image_3(
-                                renderer,
-                                &1, 
-                                _g.get_type(),
-                                &image
-                            )
-                        }
-                    });
+                    if *_f > GROUND_START_FRAME {
+                        _pt = _p + 1 * MAZE_SIZE;
+                        ghosts.iter().for_each(|_g| {
+                            if _g.get_position() == _pt {
+                                Self::draw_image_3(
+                                    renderer,
+                                    &1, 
+                                    _g.get_type(),
+                                    &image
+                                )
+                            }
+                        });
+                    }
                 }
                 'w' => {
                     let _ = renderer.draw_image(

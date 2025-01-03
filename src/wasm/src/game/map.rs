@@ -5,12 +5,6 @@ pub mod map {
         pub map: [usize; MAZE_SIZE * MAZE_SIZE],
     }
     impl Map {
-        pub fn new(_maze: [usize; MAZE_SIZE * MAZE_SIZE]) -> Map {
-            Map {
-                map: _maze,
-            }
-        }
-
         pub fn mapping(&mut self, _p:usize) {
             self.map[_p] = 9;
         }
