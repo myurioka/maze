@@ -10,7 +10,7 @@ use message::message::*;
 use ghost::ghost::*;
 use crate::engine;
 use crate::engine::{
-    Game, KeyState, Point, Renderer, SCREEN_HEIGHT, SCREEN_WIDTH, KIMIDORI_COLOR, GREEN_DARK_MIDDLE,
+    Game, KeyState, MouseState, Point, Renderer, SCREEN_HEIGHT, SCREEN_WIDTH, KIMIDORI_COLOR, GREEN_DARK_MIDDLE,
 };
 //use crate::common;
 use crate::common::{
@@ -38,14 +38,14 @@ impl GameStageStateMachine {
     fn new(material: Material) -> Self {
         GameStageStateMachine::Ready(GameStageState::new(material))
     }
-    fn update(self, _keystate: &KeyState) -> Self {
+    fn update(self, _keystate: &KeyState, _mousestate: &MouseState) -> Self {
         match self {
-            GameStageStateMachine::Ready(state) => state.update(_keystate).into(),
-            GameStageStateMachine::Playing(state) => state.update(_keystate).into(),
-            GameStageStateMachine::Focusing(state) => state.update(_keystate).into(),
-            GameStageStateMachine::GameOver(state) => state.update(_keystate).into(),
+            GameStageStateMachine::Ready(state) => state.update(_keystate, _mousestate).into(),
+            GameStageStateMachine::Playing(state) => state.update(_keystate, _mousestate).into(),
+            GameStageStateMachine::Focusing(state) => state.update(_keystate, _mousestate).into(),
+            GameStageStateMachine::GameOver(state) => state.update(_keystate, _mousestate).into(),
             GameStageStateMachine::Escape(state) => state.update(_keystate).into(),
-            GameStageStateMachine::GameClear(state) => state.update(_keystate).into(),
+            GameStageStateMachine::GameClear(state) => state.update(_keystate, _mousestate).into(),
         }
     }
     fn draw(&self, renderer: &Renderer) {
@@ -103,8 +103,8 @@ impl GameStageState<Ready> {
     fn start_running(self) -> GameStageState<Playing> {
         GameStageState { _state: Playing, material: self.material,}
     }
-    fn update(self, _keystate: &KeyState) -> ReadyEndState {
-        if _keystate.is_pressed("Space") {
+    fn update(self, _keystate: &KeyState, _mousestate: &MouseState) -> ReadyEndState {
+        if _keystate.is_pressed("Space") || _mousestate.is_pressed() {
             return ReadyEndState::Complete(self.start_running());
         }
         ReadyEndState::Continue(self)
@@ -131,8 +131,8 @@ impl GameStageState<Focusing> {
         }
         GameStageState { _state: Playing, material: self.material,}
     }
-    fn update(self, _keystate: &KeyState) -> FocusEndState {
-        if _keystate.is_pressed("Space") {
+    fn update(self, _keystate: &KeyState, _mousestate: &MouseState) -> FocusEndState {
+        if _keystate.is_pressed("Space") || _mousestate.is_pressed() {
             return FocusEndState::Complete(self.start_running());
         }
         FocusEndState::Continue(self)
@@ -152,7 +152,7 @@ impl From<FocusEndState> for GameStageStateMachine {
 }
 struct Playing;
 impl GameStageState<Playing> {
-    fn update(mut self, _keystate: &KeyState) -> RunningEndState {
+    fn update(mut self, _keystate: &KeyState, _mousestate: &MouseState) -> RunningEndState {
         self.material.frame += 1;
         let mut _p = self.material.p;
         let mut _d = self.material.d;
@@ -162,79 +162,81 @@ impl GameStageState<Playing> {
 
         // INPUT KEY
         // camera moves forward
-        if _keystate.is_pressed("ArrowUp") && _out_box {
-            match self.material.d {
-                'n' => {
-                    if self.material.maze.check_wall(_p - MAZE_SIZE ) {
-                        _p -= MAZE_SIZE;
-                    }
-                },
-                's' => {
-                    if self.material.maze.check_wall(_p + MAZE_SIZE) {
-                        _p += MAZE_SIZE;
-                    }
-                },
-                'e' => {
-                    if self.material.maze.check_wall(_p + 1) {
-                        _p += 1;
-                    }
-                },
-                'w' => {
-                    if self.material.maze.check_wall(_p - 1) {
-                        _p -= 1;
-                    }
-                },
-                _ =>{}
+        if _out_box {
+            if _keystate.is_pressed("ArrowUp") || _mousestate.mouse_pressed() == "ArrowUp"{
+                match self.material.d {
+                    'n' => {
+                        if self.material.maze.check_wall(_p - MAZE_SIZE ) {
+                            _p -= MAZE_SIZE;
+                        }
+                    },
+                    's' => {
+                        if self.material.maze.check_wall(_p + MAZE_SIZE) {
+                            _p += MAZE_SIZE;
+                        }
+                    },
+                    'e' => {
+                        if self.material.maze.check_wall(_p + 1) {
+                            _p += 1;
+                        }
+                    },
+                    'w' => {
+                        if self.material.maze.check_wall(_p - 1) {
+                            _p -= 1;
+                        }
+                    },
+                    _ =>{}
+                }
             }
-        }
-        // camera moves back
-        if _keystate.is_pressed("ArrowDown") && _out_box {
-            match self.material.d {
-                'n' => {
+            // camera moves back
+            if _keystate.is_pressed("ArrowDown") || _mousestate.mouse_pressed() == "ArrowDown"{
+                match self.material.d {
+                    'n' => {
                     if self.material.maze.check_wall(_p + MAZE_SIZE) {
                         _p += MAZE_SIZE
                     }
-                },
-                's' => {
+                    },
+                    's' => {
                     if self.material.maze.check_wall(_p - MAZE_SIZE) {
                         _p -= MAZE_SIZE
                     }
-                },
-                'e' => {
+                    },
+                    'e' => {
                     if self.material.maze.check_wall(_p - 1) {
                         _p -= 1;
                     }
-                },
-                'w' => {
+                    },
+                    'w' => {
                     if self.material.maze.check_wall(_p + 1) {
                         _p += 1;
                     }
-                },
-                _ =>{}
+                    },
+                    _ =>{}
+                }
             }
-        }
-        // camera moves left
-        if _keystate.is_pressed("ArrowLeft") && _out_box{
-            match self.material.d {
-                'n' => { _d = 'w';},
-                'w' => { _d = 's';},
-                's' => { _d = 'e';},
-                'e' => { _d = 'n';},
-                _ => {}
+            // camera moves left
+            if _keystate.is_pressed("ArrowLeft") || _mousestate.mouse_pressed() == "ArrowLeft" {
+                match self.material.d {
+                    'n' => { _d = 'w';},
+                    'w' => { _d = 's';},
+                    's' => { _d = 'e';},
+                    'e' => { _d = 'n';},
+                    _ => {}
+                }
             }
-        }
-        // camera moves right
-        if _keystate.is_pressed("ArrowRight") && _out_box {
-            match self.material.d {
-                'n' => { _d = 'e';},
-                'w' => { _d = 'n';},
-                's' => { _d = 'w';},
-                'e' => { _d = 's';},
-                _ => {}
+            // camera moves right
+            if _keystate.is_pressed("ArrowRight") || _mousestate.mouse_pressed() == "ArrowRight"{
+                match self.material.d {
+                    'n' => { _d = 'e';},
+                    'w' => { _d = 'n';},
+                    's' => { _d = 'w';},
+                    'e' => { _d = 's';},
+                    _ => {}
+                }
             }
         }
         // special action
-        if _keystate.is_pressed("Space") {
+        if _keystate.is_pressed("Space") || _mousestate.mouse_pressed() == "Space"{
             let _start_p = self.material.maze.get_start_position();
             let _box_p = self.material.maze.get_box_position();
             if _p == _start_p {
@@ -330,8 +332,8 @@ enum RunningEndState {
 }
 struct GameOver;
 impl GameStageState<GameOver> {
-    fn update(self, _keystate: &KeyState) -> GameOverEndState {
-        if _keystate.is_pressed("Space") {
+    fn update(self, _keystate: &KeyState, _mousestate: &MouseState) -> GameOverEndState {
+        if _keystate.is_pressed("Space") || _mousestate.is_pressed() {
             GameOverEndState::Complete(self.new_game())
         } else {
             GameOverEndState::Continue(self)
@@ -463,8 +465,8 @@ impl From<EscapeEndState> for GameStageStateMachine {
 
 struct GameClear;
 impl GameStageState<GameClear> {
-    fn update(self, _keystate: &KeyState) -> GameClearEndState {
-        if _keystate.is_pressed("Space") {
+    fn update(self, _keystate: &KeyState, _mousestate: &MouseState) -> GameClearEndState {
+        if _keystate.is_pressed("Space") || _mousestate.is_pressed() {
             GameClearEndState::Complete(self.new_game())
         } else {
             GameClearEndState::Continue(self)
@@ -559,9 +561,9 @@ impl Game for GameStage {
         }
     }
     // Whole World UPDATE
-    fn update(&mut self, _keystate: &KeyState) {
+    fn update(&mut self, _keystate: &KeyState, _mousestate: &MouseState) {
         if let Some(machine) = self.machine.take() {
-            self.machine.replace(machine.update(_keystate));
+            self.machine.replace(machine.update(_keystate, _mousestate));
         }
         assert!(self.machine.is_some());
     }

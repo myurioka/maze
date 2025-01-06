@@ -9,9 +9,9 @@ use futures::channel::{
 //use serde::Deserialize;
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Mutex};
 use wasm_bindgen::{prelude::Closure, JsCast, JsValue};
-use web_sys::{CanvasRenderingContext2d, HtmlImageElement};
+use web_sys::{CanvasRenderingContext2d, HtmlImageElement, MouseEvent};
 
-const FRAME_SIZE: f64 = 1.0 / 60.0 * 10000.0;
+const FRAME_SIZE: f64 = 1.0 / 60.0 * 20000.0;
 //const FRAME_SIZE: f64 = 1.0 / 60.0 * 1000.0;
 pub const SCREEN_HEIGHT: f32 = 600.0;
 pub const SCREEN_WIDTH: f32 = 450.0;
@@ -93,9 +93,7 @@ impl Renderer {
             height as f64,
         );
     }
-    //pub fn draw_image(&self, image:&HtmlImageElement, _sx: &f32, _sy: &f32, _sw: &f32, _sh: &f32, _dx: &f32, _dy: &f32, _dw: &f32, _dh:&f32){
     pub fn draw_image(&self, image:&HtmlImageElement, _sx: f32, _sy: f32, _sw: f32, _sh: f32, _dx: f32, _dy: f32, _dw: f32, _dh:f32){
-    //pub fn draw_image(&self, image:&HtmlImageElement, frame: &Rect, destination: &Rect){
         self.context.begin_path();
         let _ = self.context
             .draw_image_with_html_image_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
@@ -131,16 +129,6 @@ impl Renderer {
         }
         let _ = self.context.fill_text(text, point.x as f64, point.y as f64);
     }
-    /*
-    pub fn line(&self, p: &Point, q: &Point, color: &str) {
-        self.context.begin_path();
-        self.context.set_stroke_style(&JsValue::from(color));
-        self.context.move_to(p.x.into(), SCREEN_HEIGHT as f64 - p.y as f64);
-        self.context.line_to(q.x.into(), SCREEN_HEIGHT as f64 - q.y as f64);
-        self.context.close_path();
-        self.context.stroke();
-    }
-    */
     pub fn rect(&self, p: &Point, width: f32, height: f32, color: &str, alpha: f64) {
         self.context.set_global_alpha(alpha.into()); 
         self.context.set_stroke_style(&JsValue::from(color));
@@ -206,7 +194,7 @@ pub async fn load_image(source: &str) -> Result<HtmlImageElement>{
 #[async_trait(?Send)]
 pub trait Game {
     async fn initialize(&self) -> Result<Box<dyn Game>>;
-    fn update(&mut self, keystate: &KeyState);
+    fn update(&mut self, keystate: &KeyState, mousestate: &MouseState);
     fn draw(&self, renderer: &Renderer);
 }
 
@@ -219,6 +207,7 @@ type SharedLoopClosure = Rc<RefCell<Option<LoopClosure>>>;
 impl GameLoop {
     pub async fn start(game: impl Game + 'static) -> Result<()> {
         let mut keyevent_receiver = prepare_input()?;
+        let mut mouse_receiver = prepare_mouse_input()?;
         let mut game = game.initialize().await?;
         let mut game_loop = GameLoop {
             last_frame: browser::now()?.into(),
@@ -233,12 +222,15 @@ impl GameLoop {
         let g = f.clone();
 
         let mut keystate = KeyState::new();
+        let mut mousestate = MouseState::new(browser::canvas()?.offset_left());
+
         *g.borrow_mut() = Some(browser::create_raf_closure(move |perf: f64| {
             process_input(&mut keystate, &mut keyevent_receiver);
+            process_mouse_input(&mut mousestate, &mut mouse_receiver);
 
             game_loop.accumulated_delta += perf - game_loop.last_frame;
             while game_loop.accumulated_delta > FRAME_SIZE {
-                game.update(&keystate);
+                game.update(&keystate, &mousestate);
                 game_loop.accumulated_delta -= FRAME_SIZE;
             }
             game_loop.last_frame = perf;
@@ -254,6 +246,105 @@ impl GameLoop {
         )?;
         Ok(())
     }
+}
+
+pub struct MouseState {
+    x: i32, // client_x
+    y: i32, // client_y
+    s: bool,// true: pressed, false: unpressed
+    offset_x: i32, // Canvas offset
+}
+impl MouseState {
+    fn new(_offset_x: i32) -> Self {
+        return MouseState {
+            x: 0,
+            y: 0,
+            s: false,
+            offset_x: _offset_x,
+        };
+    }
+    pub fn is_pressed(&self) -> bool {
+        self.s
+    }
+    const W:i32 = SCREEN_WIDTH as i32 / 3;
+    const H:i32 = SCREEN_HEIGHT as i32 / 3;
+    pub fn mouse_pressed(&self) -> &str {
+        if self.s {
+            if  self.x - self.offset_x < Self::W && self.y > Self::H &&self.y < 2 * Self::H {
+                log!("PASS ArrowLeft");
+                return "ArrowLeft";
+            }
+            /*
+            } else if self.x > Self::W && self.x < 2 * Self::W && self.y < Self::H {
+                log!("PASS ArrowUp x:{}, y:{}", self.x, self.y);
+                //return "ArrowUp";
+            } else if self.x >Self:: W && self.x < 2 * Self::W && self.y > Self::H && self.y < 2 * Self::H {
+                log!("PASS SPACE");
+                //return "Space";
+            } else if self.x > 2 * Self::W && self.y > Self::H && self.y < 2 * Self::H {
+                log!("PASS ArrowRight");
+                //return "ArrowRight";
+            } else if self.x > Self::W && self.x < 2 * Self::W && self.y > 2 * Self::H {
+                log!("PASS ArrowDown");
+                //return "ArrowDown";
+            }
+            */
+        }
+        //log!("PASS NONE");
+        return "";
+    }
+    fn set_pressed(&mut self, _x: i32, _y: i32 ) {
+        self.x = _x;
+        self.y = _y;
+        self.s = true;
+    }
+
+    fn set_released(&mut self) {
+        self.s = false;
+    }
+}
+enum MousePress {
+    MouseDown(MouseEvent),
+    MouseUp(MouseEvent),
+}
+
+fn process_mouse_input(state: &mut MouseState, mouse_receiver: &mut UnboundedReceiver<MousePress>) {
+    loop {
+        match mouse_receiver.try_next() {
+            Ok(None) => break,
+            Err(_err) => break,
+            Ok(Some(evt)) => match evt{
+                MousePress::MouseDown(evt) =>
+                    state.set_pressed(evt.client_x(), evt.client_y() ),
+                MousePress::MouseUp(evt) =>
+                    state.set_released(),
+            },
+        };
+    }
+}
+// For Mouse Input
+fn prepare_mouse_input() -> Result<UnboundedReceiver<MousePress>> {
+    let (mousedown_sender, mouse_receiver) = unbounded();
+    let mousedown_sender = Rc::new(RefCell::new(mousedown_sender));
+    let mouseup_sender = Rc::clone(&mousedown_sender);
+    let onmousedown = browser::closure_wrap(Box::new(move |mousecode: MouseEvent| {
+        let _ = mousedown_sender
+            .borrow_mut()
+            .start_send(MousePress::MouseDown(mousecode));
+    }) as Box<dyn FnMut(MouseEvent)>);
+
+    let onmouseup = browser::closure_wrap(Box::new(move |mousecode: MouseEvent| {
+        let _ = mouseup_sender
+            .borrow_mut()
+            .start_send(MousePress::MouseUp(mousecode));
+    }) as Box<dyn FnMut(MouseEvent)>);
+
+    browser::canvas()?.set_onmousedown(Some(onmousedown.as_ref().unchecked_ref()));
+    browser::canvas()?.set_onmouseup(Some(onmouseup.as_ref().unchecked_ref()));
+    onmousedown.forget();
+    onmouseup.forget();
+
+    Ok(mouse_receiver)
 }
 
 pub struct KeyState {
