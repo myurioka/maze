@@ -11,7 +11,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Mutex};
 use wasm_bindgen::{prelude::Closure, JsCast, JsValue};
 use web_sys::{CanvasRenderingContext2d, HtmlImageElement, MouseEvent};
 
-const FRAME_SIZE: f64 = 1.0 / 60.0 * 20000.0;
+const FRAME_SIZE: f64 = 1.0 / 60.0 * 10000.0;
 //const FRAME_SIZE: f64 = 1.0 / 60.0 * 1000.0;
 pub const SCREEN_HEIGHT: f32 = 600.0;
 pub const SCREEN_WIDTH: f32 = 450.0;
@@ -255,6 +255,8 @@ pub struct MouseState {
     offset_x: i32, // Canvas offset
 }
 impl MouseState {
+    const W:i32 = SCREEN_WIDTH as i32 / 3;
+    const H:i32 = SCREEN_HEIGHT as i32 / 3;
     fn new(_offset_x: i32) -> Self {
         return MouseState {
             x: 0,
@@ -266,29 +268,26 @@ impl MouseState {
     pub fn is_pressed(&self) -> bool {
         self.s
     }
-    const W:i32 = SCREEN_WIDTH as i32 / 3;
-    const H:i32 = SCREEN_HEIGHT as i32 / 3;
     pub fn mouse_pressed(&self) -> &str {
+        let _x = self.x - self.offset_x;
+        let _y = self.y;
         if self.s {
-            if  self.x - self.offset_x < Self::W && self.y > Self::H &&self.y < 2 * Self::H {
-                log!("PASS ArrowLeft");
+            if  _x < Self::W && _y > Self::H && _y < 2 * Self::H {
+                log!("PASS ArrowLeft x:{}, y:{}", _x, _y);
                 return "ArrowLeft";
-            }
-            /*
-            } else if self.x > Self::W && self.x < 2 * Self::W && self.y < Self::H {
-                log!("PASS ArrowUp x:{}, y:{}", self.x, self.y);
-                //return "ArrowUp";
-            } else if self.x >Self:: W && self.x < 2 * Self::W && self.y > Self::H && self.y < 2 * Self::H {
+            } else if _x > Self::W && _x < 2 * Self::W && _y < Self::H {
+                log!("PASS ArrowUp x:{}, y:{}", _x, _y);
+                return "ArrowUp";
+            } else if _x >Self:: W && _x < 2 * Self::W && _y > Self::H && _y < 2 * Self::H {
                 log!("PASS SPACE");
-                //return "Space";
-            } else if self.x > 2 * Self::W && self.y > Self::H && self.y < 2 * Self::H {
+                return "Space";
+            } else if _x > 2 * Self::W && _y > Self::H && _y < 2 * Self::H {
                 log!("PASS ArrowRight");
-                //return "ArrowRight";
-            } else if self.x > Self::W && self.x < 2 * Self::W && self.y > 2 * Self::H {
+                return "ArrowRight";
+            } else if _x > Self::W && _x < 2 * Self::W && _y > 2 * Self::H {
                 log!("PASS ArrowDown");
-                //return "ArrowDown";
+                return "ArrowDown";
             }
-            */
         }
         //log!("PASS NONE");
         return "";
