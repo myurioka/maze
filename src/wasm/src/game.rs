@@ -44,7 +44,7 @@ impl GameStageStateMachine {
             GameStageStateMachine::Playing(state) => state.update(_keystate, _mousestate).into(),
             GameStageStateMachine::Focusing(state) => state.update(_keystate, _mousestate).into(),
             GameStageStateMachine::GameOver(state) => state.update(_keystate, _mousestate).into(),
-            GameStageStateMachine::Escape(state) => state.update(_keystate).into(),
+            GameStageStateMachine::Escape(state) => state.update(_keystate, _mousestate).into(),
             GameStageStateMachine::GameClear(state) => state.update(_keystate, _mousestate).into(),
         }
     }
@@ -360,7 +360,7 @@ impl From<GameOverEndState> for GameStageStateMachine {
 }
 struct Escape;
 impl GameStageState<Escape> {
-    fn update(mut self, _keystate: &KeyState) -> EscapeEndState {
+    fn update(mut self, _keystate: &KeyState, _mousestate: &MouseState) -> EscapeEndState {
         self.material.frame += 1;
         let mut _p = self.material.p;
         let mut _d = self.material.d;
@@ -368,7 +368,8 @@ impl GameStageState<Escape> {
         let mut _effect = self.material.effect;
         let mut _out_box = self.material.out_box;
 
-        if _keystate.is_pressed("ArrowUp") {
+
+        if _keystate.is_pressed("ArrowUp") || _mousestate.mouse_pressed() == "ArrowUp"{
             match self.material.d {
                 'n' => {
                     _p -= MAZE_SIZE;
@@ -381,7 +382,7 @@ impl GameStageState<Escape> {
                 _ =>{}
             }
         }
-        if _keystate.is_pressed("ArrowDown") {
+        if _keystate.is_pressed("ArrowDown") || _mousestate.mouse_pressed() == "ArrowDown"{
             match self.material.d {
                 's' => {
                     _p -= MAZE_SIZE;
@@ -389,7 +390,7 @@ impl GameStageState<Escape> {
                 _ =>{}
             }
         }
-        if _keystate.is_pressed("ArrowLeft") {
+        if _keystate.is_pressed("ArrowLeftr") || _mousestate.mouse_pressed() == "ArrowLeft"{
             match self.material.d {
                 'n' => { _d = 'w';},
                 'w' => { _d = 's';},
@@ -399,7 +400,7 @@ impl GameStageState<Escape> {
             }
         }
         // camera moves right
-        if _keystate.is_pressed("ArrowRight") {
+        if _keystate.is_pressed("ArrowRight") || _mousestate.mouse_pressed() == "ArrowRight"{
             match self.material.d {
                 'n' => { _d = 'e';},
                 'w' => { _d = 'n';},

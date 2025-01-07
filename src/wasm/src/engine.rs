@@ -3,7 +3,7 @@ use crate::browser::{self, LoopClosure};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use futures::channel::{
-    mpsc::{unbounded, UnboundedReceiver},
+    mpsc::{unbounded, UnboundedReceiver},, _mousestate
     oneshot::channel,
 };
 //use serde::Deserialize;
@@ -273,23 +273,17 @@ impl MouseState {
         let _y = self.y;
         if self.s {
             if  _x < Self::W && _y > Self::H && _y < 2 * Self::H {
-                log!("PASS ArrowLeft x:{}, y:{}", _x, _y);
                 return "ArrowLeft";
             } else if _x > Self::W && _x < 2 * Self::W && _y < Self::H {
-                log!("PASS ArrowUp x:{}, y:{}", _x, _y);
                 return "ArrowUp";
             } else if _x >Self:: W && _x < 2 * Self::W && _y > Self::H && _y < 2 * Self::H {
-                log!("PASS SPACE");
                 return "Space";
             } else if _x > 2 * Self::W && _y > Self::H && _y < 2 * Self::H {
-                log!("PASS ArrowRight");
                 return "ArrowRight";
             } else if _x > Self::W && _x < 2 * Self::W && _y > 2 * Self::H {
-                log!("PASS ArrowDown");
                 return "ArrowDown";
             }
         }
-        //log!("PASS NONE");
         return "";
     }
     fn set_pressed(&mut self, _x: i32, _y: i32 ) {
