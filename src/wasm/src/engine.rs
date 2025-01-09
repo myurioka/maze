@@ -3,7 +3,7 @@ use crate::browser::{self, LoopClosure};
 use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use futures::channel::{
-    mpsc::{unbounded, UnboundedReceiver},, _mousestate
+    mpsc::{unbounded, UnboundedReceiver},
     oneshot::channel,
 };
 //use serde::Deserialize;
@@ -12,7 +12,6 @@ use wasm_bindgen::{prelude::Closure, JsCast, JsValue};
 use web_sys::{CanvasRenderingContext2d, HtmlImageElement, MouseEvent};
 
 const FRAME_SIZE: f64 = 1.0 / 60.0 * 10000.0;
-//const FRAME_SIZE: f64 = 1.0 / 60.0 * 1000.0;
 pub const SCREEN_HEIGHT: f32 = 600.0;
 pub const SCREEN_WIDTH: f32 = 450.0;
 pub const DEFAULT_COLOR: &str = "green";
@@ -298,7 +297,7 @@ impl MouseState {
 }
 enum MousePress {
     MouseDown(MouseEvent),
-    MouseUp(MouseEvent),
+    MouseUp(),
 }
 
 fn process_mouse_input(state: &mut MouseState, mouse_receiver: &mut UnboundedReceiver<MousePress>) {
@@ -309,7 +308,7 @@ fn process_mouse_input(state: &mut MouseState, mouse_receiver: &mut UnboundedRec
             Ok(Some(evt)) => match evt{
                 MousePress::MouseDown(evt) =>
                     state.set_pressed(evt.client_x(), evt.client_y() ),
-                MousePress::MouseUp(evt) =>
+                MousePress::MouseUp() =>
                     state.set_released(),
             },
         };
@@ -320,16 +319,16 @@ fn prepare_mouse_input() -> Result<UnboundedReceiver<MousePress>> {
     let (mousedown_sender, mouse_receiver) = unbounded();
     let mousedown_sender = Rc::new(RefCell::new(mousedown_sender));
     let mouseup_sender = Rc::clone(&mousedown_sender);
-    let onmousedown = browser::closure_wrap(Box::new(move |mousecode: MouseEvent| {
+    let onmousedown = browser::closure_wrap(Box::new(move |_mousecode: MouseEvent| {
         let _ = mousedown_sender
             .borrow_mut()
-            .start_send(MousePress::MouseDown(mousecode));
+            .start_send(MousePress::MouseDown(_mousecode));
     }) as Box<dyn FnMut(MouseEvent)>);
 
-    let onmouseup = browser::closure_wrap(Box::new(move |mousecode: MouseEvent| {
+    let onmouseup = browser::closure_wrap(Box::new(move |_mousecode: MouseEvent| {
         let _ = mouseup_sender
             .borrow_mut()
-            .start_send(MousePress::MouseUp(mousecode));
+            .start_send(MousePress::MouseUp());
     }) as Box<dyn FnMut(MouseEvent)>);
 
     browser::canvas()?.set_onmousedown(Some(onmousedown.as_ref().unchecked_ref()));
