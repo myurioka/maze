@@ -10,7 +10,7 @@ use message::message::*;
 use ghost::ghost::*;
 use crate::engine;
 use crate::engine::{
-    Game, KeyState, TouchState, Point, Renderer, SCREEN_HEIGHT, SCREEN_WIDTH, KIMIDORI_COLOR, GREEN_DARK_MIDDLE,
+    Game, KeyState, TouchState, Point, Renderer, KIMIDORI_COLOR, GREEN_DARK_MIDDLE,
 };
 //use crate::common;
 use crate::common::{
@@ -569,11 +569,7 @@ impl Game for GameStage {
         assert!(self.machine.is_some());
     }
     fn draw(&self, renderer: &Renderer) {
-        renderer.clear(
-            &Point{ x:0.0, y:0.0 },
-            SCREEN_WIDTH,
-            SCREEN_HEIGHT,
-        );
+        renderer.clear();
         match &self.machine {
             Some(GameStageStateMachine::Ready(_state)) => {
                 renderer.polygon(

@@ -1,5 +1,5 @@
 pub mod message {
-    use crate::game::{Point, Renderer, HtmlImageElement, SCREEN_WIDTH, SCREEN_HEIGHT};
+    use crate::game::{Point, Renderer, HtmlImageElement};
 
     pub struct Message {
     }
@@ -10,11 +10,7 @@ pub mod message {
         pub fn draw(&self, renderer: &Renderer, _m: &char, image:HtmlImageElement ) {
             match &_m {
                 'a' => {
-                    let _ = renderer.clear(
-                        &Point{ x:0.0, y:0.0 },
-                        SCREEN_WIDTH,
-                        SCREEN_HEIGHT,
-                    );
+                    let _ = renderer.clear();
                     let _ = renderer.polygon(
                         &Point{x: 400.0, y:275.0},
                         &Point{x:525.0, y:150.0},
@@ -55,11 +51,7 @@ pub mod message {
                     let _ = renderer.text(&Point{x:50.0, y:395.0}, "If I can reach the ivy.", 'l', 18, 'l');
                 },
                 'b' => {
-                    let _ = renderer.clear(
-                        &Point{ x:0.0, y:0.0 },
-                        SCREEN_WIDTH,
-                        SCREEN_HEIGHT,
-                    );
+                    let _ = renderer.clear();
                     let _ = renderer.polygon(
                         &Point{x: 400.0, y: -25.0},
                         &Point{x:525.0, y: -100.0},

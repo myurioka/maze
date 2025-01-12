@@ -12,8 +12,6 @@ use wasm_bindgen::{prelude::Closure, JsCast, JsValue};
 use web_sys::{CanvasRenderingContext2d, HtmlImageElement, TouchEvent, TouchList, Touch};
 
 const FRAME_SIZE: f64 = 1.0 / 60.0 * 10000.0;
-pub const SCREEN_HEIGHT: f32 = 600.0;
-pub const SCREEN_WIDTH: f32 = 450.0;
 pub const DEFAULT_COLOR: &str = "rgba(0,128, 0)";
 pub const KIMIDORI_COLOR: &str = "rgba(184,210,0,1.0)";
 pub const LIGHT_GREEN_COLOR: &str = "rgba(226,238,197,1.0)";
@@ -75,13 +73,13 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn clear(&self, point: &Point, width: f32, height: f32) {
+    pub fn clear(&self) {
         self.context.set_global_alpha(1.0); 
         self.context.clear_rect(
-            point.x.into(),
-            point.y.into(),
-            width as f64,
-            height as f64,
+            0.0,
+            0.0,
+            browser::canvas().unwrap().client_width().into(),
+            browser::canvas().unwrap().client_height().into(),
         );
     }
     pub fn draw_image(&self, image:&HtmlImageElement, _sx: f32, _sy: f32, _sw: f32, _sh: f32, _dx: f32, _dy: f32, _dw: f32, _dh:f32){
@@ -152,6 +150,7 @@ impl Renderer {
         self.context.fill();
     }
 }
+
 pub async fn load_image(source: &str) -> Result<HtmlImageElement>{
     let image = browser::new_image()?;
     let (complete_tx, complete_rx) = channel::<Result<()>>();
@@ -213,7 +212,11 @@ impl GameLoop {
         let g = f.clone();
 
         let mut keystate = KeyState::new();
-        let mut touchstate = TouchState::new(browser::canvas()?.offset_left());
+        let mut touchstate = TouchState::new(
+            browser::canvas()?.offset_left(),
+            browser::canvas().unwrap().client_width(),
+            browser::canvas().unwrap().client_height(),
+        );
 
         *g.borrow_mut() = Some(browser::create_raf_closure(move |perf: f64| {
             process_input(&mut keystate, &mut keyevent_receiver);
@@ -244,34 +247,35 @@ pub struct TouchState {
     y: i32, // client_y
     s: bool,// true: pressed, false: unpressed
     offset_x: i32, // Canvas offset
+    screen_width: i32,
+    screen_height: i32,
 }
 impl TouchState {
-    const W:i32 = SCREEN_WIDTH as i32 / 3;
-    const H:i32 = SCREEN_HEIGHT as i32 / 3;
-    fn new(_offset_x: i32) -> Self {
+    fn new(offset_x: i32, screen_width: i32, screen_height: i32) -> Self {
         return TouchState {
             x: 0,
             y: 0,
             s: false,
-            offset_x: _offset_x,
+            offset_x: offset_x,
+            screen_width: screen_width,
+            screen_height: screen_height,
         };
     }
-    pub fn is_pressed(&self) -> bool {
-        self.s
-    }
     pub fn touch_pressed(&self) -> &str {
+        let _width:i32 = (self.screen_width / 3) as i32;
+        let _height:i32 = (self.screen_height / 3) as i32;
         let _x = self.x - self.offset_x;
         let _y = self.y;
         if self.s {
-            if  _x < Self::W && _y > Self::H && _y < 2 * Self::H {
+            if  _x < _width && _y > _height && _y < 2 * _height {
                 return "ArrowLeft";
-            } else if _x > Self::W && _x < 2 * Self::W && _y < Self::H {
+            } else if _x > _width && _x < 2 * _width && _y < _height {
                 return "ArrowUp";
-            } else if _x >Self:: W && _x < 2 * Self::W && _y > Self::H && _y < 2 * Self::H {
+            } else if _x > _width && _x < 2 * _width && _y > _height && _y < 2 * _height {
                 return "Space";
-            } else if _x > 2 * Self::W && _y > Self::H && _y < 2 * Self::H {
+            } else if _x > 2 * _width && _y > _height && _y < 2 * _height {
                 return "ArrowRight";
-            } else if _x > Self::W && _x < 2 * Self::W && _y > 2 * Self::H {
+            } else if _x > _width && _x < 2 * _width && _y > 2 * _height {
                 return "ArrowDown";
             }
         }
