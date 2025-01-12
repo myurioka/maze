@@ -9,7 +9,7 @@ use futures::channel::{
 //use serde::Deserialize;
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Mutex};
 use wasm_bindgen::{prelude::Closure, JsCast, JsValue};
-use web_sys::{CanvasRenderingContext2d, HtmlImageElement, MouseEvent, TouchEvent, TouchList, Touch};
+use web_sys::{CanvasRenderingContext2d, HtmlImageElement, TouchEvent, TouchList, Touch};
 
 const FRAME_SIZE: f64 = 1.0 / 60.0 * 10000.0;
 pub const SCREEN_HEIGHT: f32 = 600.0;
@@ -290,8 +290,6 @@ impl TouchState {
 enum TouchPress {
     TouchStart(TouchEvent),
     TouchEnd(),
-    MouseDown(MouseEvent),
-    MouseUp(),
 }
 
 fn process_touch_input(state: &mut TouchState, touch_receiver: &mut UnboundedReceiver<TouchPress>) {
@@ -301,22 +299,11 @@ fn process_touch_input(state: &mut TouchState, touch_receiver: &mut UnboundedRec
             Err(_err) => break,
             Ok(Some(evt)) => match evt{
                 TouchPress::TouchStart(evt) => {
-                    log!("TOUCH_START!!");
                     let _list:TouchList = evt.touches();
                     let _touch:Touch = _list.item(0).unwrap();
                     state.set_pressed(_touch.client_x(), _touch.client_y());
                 }
                 TouchPress::TouchEnd() => {
-                    log!("TOUCH_END!!");
-                    //let _list:TouchList = evt.touches();
-                    state.set_released();
-                },
-                TouchPress::MouseDown(evt) => {
-                    log!("MOUSE_DOWN!!");
-                    state.set_pressed(evt.client_x(), evt.client_y());
-                },
-                TouchPress::MouseUp() => {
-                    log!("MOUSE_UP!!");
                     state.set_released();
                 },
             },
@@ -340,27 +327,8 @@ fn prepare_touch_input() -> Result<UnboundedReceiver<TouchPress>> {
             .start_send(TouchPress::TouchEnd());
     }) as Box<dyn FnMut(TouchEvent)>);
 
-    let (mousedown_sender, mouse_receiver) = unbounded();
-    let mousedown_sender = Rc::new(RefCell::new(mousedown_sender));
-    let mouseup_sender = Rc::clone(&mousedown_sender);
-    let onmousedown = browser::closure_wrap(Box::new(move |_mousecode: MouseEvent| {
-        let _ = mousedown_sender
-            .borrow_mut()
-            .start_send(TouchPress::MouseDown(_mousecode));
-    }) as Box<dyn FnMut(MouseEvent)>);
-
-    let onmouseup = browser::closure_wrap(Box::new(move |_mousecode: MouseEvent| {
-        let _ = mouseup_sender
-            .borrow_mut()
-            .start_send(TouchPress::MouseUp());
-    }) as Box<dyn FnMut(MouseEvent)>);
-
     browser::canvas()?.set_ontouchstart(Some(ontouchstart.as_ref().unchecked_ref()));
     browser::canvas()?.set_ontouchend(Some(ontouchend.as_ref().unchecked_ref()));
-    browser::canvas()?.set_onmousedown(Some(onmousedown.as_ref().unchecked_ref()));
-    browser::canvas()?.set_onmouseup(Some(onmouseup.as_ref().unchecked_ref()));
-    onmousedown.forget();
-    onmouseup.forget();
     ontouchstart.forget();
     ontouchend.forget();
 
