@@ -9,19 +9,18 @@ use futures::channel::{
 //use serde::Deserialize;
 use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::Mutex};
 use wasm_bindgen::{prelude::Closure, JsCast, JsValue};
-use web_sys::{CanvasRenderingContext2d, HtmlImageElement, MouseEvent};
+use web_sys::{CanvasRenderingContext2d, HtmlImageElement, MouseEvent, TouchEvent, TouchList, Touch};
 
 const FRAME_SIZE: f64 = 1.0 / 60.0 * 10000.0;
 pub const SCREEN_HEIGHT: f32 = 600.0;
 pub const SCREEN_WIDTH: f32 = 450.0;
-pub const DEFAULT_COLOR: &str = "green";
-pub const KIMIDORI_COLOR: &str = "#b8d200";
-pub const LIGHT_GREEN_COLOR: &str = "#e2eec5";
-pub const GREEN_DARK_HEAVY: &str = "#080d08";
-pub const GREEN_DARK_MIDDLE: &str = "#0f170f";
-pub const GREEN_DARK_LIGHT: &str = "#111f11";
-pub const LIGHTCYAN: &str = "#e0ffff";
-
+pub const DEFAULT_COLOR: &str = "rgba(0,128, 0)";
+pub const KIMIDORI_COLOR: &str = "rgba(184,210,0,1.0)";
+pub const LIGHT_GREEN_COLOR: &str = "rgba(226,238,197,1.0)";
+pub const GREEN_DARK_HEAVY: &str = "rgba(8,13,8,1.0)";
+pub const GREEN_DARK_MIDDLE: &str = "rgba(15,23,15,1.0)";
+pub const GREEN_DARK_LIGHT: &str = "rgba(17,31,17,1.0)";
+pub const LIGHTCYAN: &str = "rgba(17,31,17,1.0)";
 
 /*
 #[derive(Deserialize, Clone)]
@@ -31,9 +30,6 @@ pub struct SheetRect {
     pub w: i16,
     pub h: i16,
 }
-*/
-
-/*
 #[derive(Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Cell {
@@ -45,9 +41,6 @@ pub struct Cell {
 pub struct Sheet {
     pub frames: HashMap<String, Cell>,
 }
-*/
-
-/*
 #[derive(Default)]
 pub struct Rect {
     pub position: Point,
@@ -63,8 +56,7 @@ impl Rect {
         }
     }
 }
-*/
-
+*/ 
 #[derive(Clone, Copy, Default)]
 pub struct Point {
     pub x: f32,
@@ -111,9 +103,9 @@ impl Renderer {
 
     pub fn text(&self, point: &Point, text: &str, align: char, size: usize, color: char) {
         match color {
-            'l' => self.context.set_fill_style(&JsValue::from(LIGHT_GREEN_COLOR)),
-            'c' => self.context.set_fill_style(&JsValue::from(LIGHTCYAN)),
-            _ => self.context.set_fill_style(&JsValue::from(DEFAULT_COLOR)),
+            'l' => self.context.set_fill_style_str(LIGHT_GREEN_COLOR),
+            'c' => self.context.set_fill_style_str(LIGHTCYAN),
+            _ => self.context.set_fill_style_str(DEFAULT_COLOR),
         }
         match align {
             'c' => self.context.set_text_align("center"),
@@ -130,8 +122,8 @@ impl Renderer {
     }
     pub fn rect(&self, p: &Point, width: f32, height: f32, color: &str, alpha: f64) {
         self.context.set_global_alpha(alpha.into()); 
-        self.context.set_stroke_style(&JsValue::from(color));
-        self.context.set_fill_style(&JsValue::from(color));
+        self.context.set_stroke_style_str(color);
+        self.context.set_fill_style_str(color);
         self.context.begin_path();
         self.context.rect(p.x as f64,p.y as f64, width as f64, height as f64);
         self.context.close_path();
@@ -147,8 +139,8 @@ impl Renderer {
             'p' => _color = "pink",
             _ => _color = "black",
         }
-        self.context.set_stroke_style(&JsValue::from(DEFAULT_COLOR));
-        self.context.set_fill_style(&JsValue::from(_color));
+        self.context.set_stroke_style_str(DEFAULT_COLOR);
+        self.context.set_fill_style_str(_color);
         self.context.begin_path();
         self.context.move_to(a.x as f64, a.y as f64);
         self.context.line_to(b.x as f64, b.y as f64);
@@ -193,7 +185,7 @@ pub async fn load_image(source: &str) -> Result<HtmlImageElement>{
 #[async_trait(?Send)]
 pub trait Game {
     async fn initialize(&self) -> Result<Box<dyn Game>>;
-    fn update(&mut self, keystate: &KeyState, mousestate: &MouseState);
+    fn update(&mut self, keystate: &KeyState, touchstate: &TouchState);
     fn draw(&self, renderer: &Renderer);
 }
 
@@ -206,7 +198,7 @@ type SharedLoopClosure = Rc<RefCell<Option<LoopClosure>>>;
 impl GameLoop {
     pub async fn start(game: impl Game + 'static) -> Result<()> {
         let mut keyevent_receiver = prepare_input()?;
-        let mut mouse_receiver = prepare_mouse_input()?;
+        let mut touch_receiver = prepare_touch_input()?;
         let mut game = game.initialize().await?;
         let mut game_loop = GameLoop {
             last_frame: browser::now()?.into(),
@@ -221,15 +213,15 @@ impl GameLoop {
         let g = f.clone();
 
         let mut keystate = KeyState::new();
-        let mut mousestate = MouseState::new(browser::canvas()?.offset_left());
+        let mut touchstate = TouchState::new(browser::canvas()?.offset_left());
 
         *g.borrow_mut() = Some(browser::create_raf_closure(move |perf: f64| {
             process_input(&mut keystate, &mut keyevent_receiver);
-            process_mouse_input(&mut mousestate, &mut mouse_receiver);
+            process_touch_input(&mut touchstate, &mut touch_receiver);
 
             game_loop.accumulated_delta += perf - game_loop.last_frame;
             while game_loop.accumulated_delta > FRAME_SIZE {
-                game.update(&keystate, &mousestate);
+                game.update(&keystate, &touchstate);
                 game_loop.accumulated_delta -= FRAME_SIZE;
             }
             game_loop.last_frame = perf;
@@ -247,17 +239,17 @@ impl GameLoop {
     }
 }
 
-pub struct MouseState {
+pub struct TouchState {
     x: i32, // client_x
     y: i32, // client_y
     s: bool,// true: pressed, false: unpressed
     offset_x: i32, // Canvas offset
 }
-impl MouseState {
+impl TouchState {
     const W:i32 = SCREEN_WIDTH as i32 / 3;
     const H:i32 = SCREEN_HEIGHT as i32 / 3;
     fn new(_offset_x: i32) -> Self {
-        return MouseState {
+        return TouchState {
             x: 0,
             y: 0,
             s: false,
@@ -267,7 +259,7 @@ impl MouseState {
     pub fn is_pressed(&self) -> bool {
         self.s
     }
-    pub fn mouse_pressed(&self) -> &str {
+    pub fn touch_pressed(&self) -> &str {
         let _x = self.x - self.offset_x;
         let _y = self.y;
         if self.s {
@@ -295,48 +287,84 @@ impl MouseState {
         self.s = false;
     }
 }
-enum MousePress {
+enum TouchPress {
+    TouchStart(TouchEvent),
+    TouchEnd(),
     MouseDown(MouseEvent),
     MouseUp(),
 }
 
-fn process_mouse_input(state: &mut MouseState, mouse_receiver: &mut UnboundedReceiver<MousePress>) {
+fn process_touch_input(state: &mut TouchState, touch_receiver: &mut UnboundedReceiver<TouchPress>) {
     loop {
-        match mouse_receiver.try_next() {
+        match touch_receiver.try_next() {
             Ok(None) => break,
             Err(_err) => break,
             Ok(Some(evt)) => match evt{
-                MousePress::MouseDown(evt) =>
-                    state.set_pressed(evt.client_x(), evt.client_y() ),
-                MousePress::MouseUp() =>
-                    state.set_released(),
+                TouchPress::TouchStart(evt) => {
+                    log!("TOUCH_START!!");
+                    let _list:TouchList = evt.touches();
+                    let _touch:Touch = _list.item(0).unwrap();
+                    state.set_pressed(_touch.client_x(), _touch.client_y());
+                }
+                TouchPress::TouchEnd() => {
+                    log!("TOUCH_END!!");
+                    //let _list:TouchList = evt.touches();
+                    state.set_released();
+                },
+                TouchPress::MouseDown(evt) => {
+                    log!("MOUSE_DOWN!!");
+                    state.set_pressed(evt.client_x(), evt.client_y());
+                },
+                TouchPress::MouseUp() => {
+                    log!("MOUSE_UP!!");
+                    state.set_released();
+                },
             },
         };
     }
 }
-// For Mouse Input
-fn prepare_mouse_input() -> Result<UnboundedReceiver<MousePress>> {
+
+// For Touch Input
+fn prepare_touch_input() -> Result<UnboundedReceiver<TouchPress>> {
+    let (touch_start_sender, touch_receiver) = unbounded();
+    let touch_start_sender = Rc::new(RefCell::new(touch_start_sender));
+    let touch_end_sender = Rc::clone(&touch_start_sender);
+    let ontouchstart = browser::closure_wrap(Box::new(move |_touchcode: TouchEvent| {
+        let _ = touch_start_sender
+            .borrow_mut()
+            .start_send(TouchPress::TouchStart(_touchcode));
+    }) as Box<dyn FnMut(TouchEvent)>);
+    let ontouchend = browser::closure_wrap(Box::new(move |_touchcode: TouchEvent| {
+        let _ = touch_end_sender
+            .borrow_mut()
+            .start_send(TouchPress::TouchEnd());
+    }) as Box<dyn FnMut(TouchEvent)>);
+
     let (mousedown_sender, mouse_receiver) = unbounded();
     let mousedown_sender = Rc::new(RefCell::new(mousedown_sender));
     let mouseup_sender = Rc::clone(&mousedown_sender);
     let onmousedown = browser::closure_wrap(Box::new(move |_mousecode: MouseEvent| {
         let _ = mousedown_sender
             .borrow_mut()
-            .start_send(MousePress::MouseDown(_mousecode));
+            .start_send(TouchPress::MouseDown(_mousecode));
     }) as Box<dyn FnMut(MouseEvent)>);
 
     let onmouseup = browser::closure_wrap(Box::new(move |_mousecode: MouseEvent| {
         let _ = mouseup_sender
             .borrow_mut()
-            .start_send(MousePress::MouseUp());
+            .start_send(TouchPress::MouseUp());
     }) as Box<dyn FnMut(MouseEvent)>);
 
+    browser::canvas()?.set_ontouchstart(Some(ontouchstart.as_ref().unchecked_ref()));
+    browser::canvas()?.set_ontouchend(Some(ontouchend.as_ref().unchecked_ref()));
     browser::canvas()?.set_onmousedown(Some(onmousedown.as_ref().unchecked_ref()));
     browser::canvas()?.set_onmouseup(Some(onmouseup.as_ref().unchecked_ref()));
     onmousedown.forget();
     onmouseup.forget();
+    ontouchstart.forget();
+    ontouchend.forget();
 
-    Ok(mouse_receiver)
+    Ok(touch_receiver)
 }
 
 pub struct KeyState {

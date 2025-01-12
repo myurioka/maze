@@ -33,7 +33,10 @@ features = ["console",
             "Response",
             "Performance",
             "KeyboardEvent",
-            "MouseEvent"
+            "MouseEvent",
+            "TouchEvent",
+            "TouchList",
+            "Touch",
             ]
 
 # These crates are used for running unit tests.
