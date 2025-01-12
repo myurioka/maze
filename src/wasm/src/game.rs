@@ -104,7 +104,7 @@ impl GameStageState<Ready> {
         GameStageState { _state: Playing, material: self.material,}
     }
     fn update(self, _keystate: &KeyState, _touchstate: &TouchState) -> ReadyEndState {
-        if _keystate.is_pressed("Space") || _touchstate.is_pressed() {
+        if _keystate.is_pressed("Space") || _touchstate.touch_pressed() == "Space"{
             return ReadyEndState::Complete(self.start_running());
         }
         ReadyEndState::Continue(self)
@@ -132,7 +132,7 @@ impl GameStageState<Focusing> {
         GameStageState { _state: Playing, material: self.material,}
     }
     fn update(self, _keystate: &KeyState, _touchstate: &TouchState) -> FocusEndState {
-        if _keystate.is_pressed("Space") || _touchstate.is_pressed() {
+        if _keystate.is_pressed("Space") || _touchstate.touch_pressed() == "Space"{
             return FocusEndState::Complete(self.start_running());
         }
         FocusEndState::Continue(self)
