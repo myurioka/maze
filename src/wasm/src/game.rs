@@ -333,7 +333,7 @@ enum RunningEndState {
 struct GameOver;
 impl GameStageState<GameOver> {
     fn update(self, _keystate: &KeyState, _touchstate: &TouchState) -> GameOverEndState {
-        if _keystate.is_pressed("Space") || _touchstate.is_pressed() {
+        if _keystate.is_pressed("Space") || _touchstate.touch_pressed() == "Space" {
             GameOverEndState::Complete(self.new_game())
         } else {
             GameOverEndState::Continue(self)
@@ -467,7 +467,7 @@ impl From<EscapeEndState> for GameStageStateMachine {
 struct GameClear;
 impl GameStageState<GameClear> {
     fn update(self, _keystate: &KeyState, _touchstate: &TouchState) -> GameClearEndState {
-        if _keystate.is_pressed("Space") || _touchstate.is_pressed() {
+        if _keystate.is_pressed("Space") || _touchstate.touch_pressed() == "Space" {
             GameClearEndState::Complete(self.new_game())
         } else {
             GameClearEndState::Continue(self)

@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<meta charset="utf-8" content="user-scalable=no" />
 <title>MAZE</title>
 <link rel="stylesheet" href="./static/main.css" type="text/css" media="screen">
 <style>
@@ -9,13 +10,20 @@
   font-family: 'MyFont';
   src: url('./assets/FFFFORWA.ttf') format('TrueType'),
 }
+.item_1 {
+    max-width: 100%;
+    max-height: 100%;
+}
+html {
+  touch-action: manipulation;
+}
 </style>
 <script type="module" src="./js/main.js"></script>
 </head>
 <body onload="document.getElementById('canvas').focus()">
     <div class = "flexbox-container">
         <div class="item_1" style="letter-spacing: 0em">
-            <canvas id="canvas" tabindex="0" height="600" width="450">
+            <canvas id="canvas" tabindex="0"  width="450" height="600">
                 Your browser does not support the Canvas.
             </canvas>
         </div>
