@@ -39,6 +39,7 @@ pub struct Cell {
 pub struct Sheet {
     pub frames: HashMap<String, Cell>,
 }
+
 #[derive(Default)]
 pub struct Rect {
     pub position: Point,
@@ -126,6 +127,7 @@ impl Renderer {
         self.context.rect(p.x as f64,p.y as f64, width as f64, height as f64);
         self.context.close_path();
         self.context.fill();
+        self.context.set_global_alpha(1.0); 
     }
     pub fn polygon(&self, a: &Point, b: &Point, c: &Point, d: &Point, color: &char) {
         let mut _color = "";

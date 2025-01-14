@@ -10,11 +10,19 @@ use message::message::*;
 use ghost::ghost::*;
 use crate::engine;
 use crate::engine::{
-    Game, KeyState, TouchState, Point, Renderer, KIMIDORI_COLOR, GREEN_DARK_MIDDLE,
+    Game, KeyState, TouchState, Point, Renderer, KIMIDORI_COLOR, GREEN_DARK_MIDDLE, DEFAULT_COLOR, LIGHT_GREEN_COLOR,
 };
 //use crate::common;
 use crate::common::{
-    MAZE_SIZE,FRAME_TERM,OPENING_TITLE_X,OPENING_TITLE_Y,OPENING_TITLE,OPENING_MESSAGE_X,OPENING_MESSAGE_Y,OPENING_MESSAGE,GAMEOVER_MESSAGE_X,GAMEOVER_MESSAGE_Y,GAMEOVER_MESSAGE, MAP_X,MAP_Y,MAP_WIDTH, MAZE_MAP, GROUND_MAP, GROUND_START_FRAME,
+MAZE_SIZE,FRAME_TERM,OPENING_TITLE_X,OPENING_TITLE_Y,OPENING_TITLE,OPENING_MESSAGE_X,OPENING_MESSAGE_Y,OPENING_MESSAGE,
+HOWTO_MESSAGE_T_X,HOWTO_MESSAGE_T_Y,HOWTO_MESSAGE_T,
+HOWTO_MESSAGE_F_X,HOWTO_MESSAGE_F_Y,HOWTO_MESSAGE_F,
+HOWTO_MESSAGE_L_X,HOWTO_MESSAGE_L_Y,HOWTO_MESSAGE_L,
+HOWTO_MESSAGE_R_X,HOWTO_MESSAGE_R_Y,HOWTO_MESSAGE_R,
+HOWTO_MESSAGE_B_X,HOWTO_MESSAGE_B_Y,HOWTO_MESSAGE_B,
+HOWTO_MESSAGE_S_X,HOWTO_MESSAGE_S_Y,HOWTO_MESSAGE_S,
+GAMEOVER_MESSAGE_X,GAMEOVER_MESSAGE_Y,GAMEOVER_MESSAGE, MAP_X,MAP_Y,MAP_WIDTH, MAZE_MAP, GROUND_MAP, GROUND_START_FRAME,
+
 };
 use web_sys::HtmlImageElement;
 
@@ -28,6 +36,7 @@ impl GameStage {
 }
 enum GameStageStateMachine {
     Ready(GameStageState<Ready>),
+    Howto(GameStageState<Howto>),
     Playing(GameStageState<Playing>),
     Focusing(GameStageState<Focusing>),
     GameOver(GameStageState<GameOver>),
@@ -41,6 +50,7 @@ impl GameStageStateMachine {
     fn update(self, _keystate: &KeyState, _touchstate: &TouchState) -> Self {
         match self {
             GameStageStateMachine::Ready(state) => state.update(_keystate, _touchstate).into(),
+            GameStageStateMachine::Howto(state) => state.update(_keystate, _touchstate).into(),
             GameStageStateMachine::Playing(state) => state.update(_keystate, _touchstate).into(),
             GameStageStateMachine::Focusing(state) => state.update(_keystate, _touchstate).into(),
             GameStageStateMachine::GameOver(state) => state.update(_keystate, _touchstate).into(),
@@ -51,6 +61,7 @@ impl GameStageStateMachine {
     fn draw(&self, renderer: &Renderer) {
         match self {
             GameStageStateMachine::Ready(state) => state.material.draw(renderer),
+            GameStageStateMachine::Howto(state) => state.material.draw(renderer),
             GameStageStateMachine::Playing(state) => state.material.draw(renderer),
             GameStageStateMachine::Focusing(state) => state.material.draw(renderer),
             GameStageStateMachine::GameOver(state) => state.material.draw(renderer),
@@ -62,6 +73,11 @@ impl GameStageStateMachine {
 impl From<GameStageState<Ready>> for GameStageStateMachine {
     fn from(state: GameStageState<Ready>) -> Self {
         GameStageStateMachine::Ready(state)
+    }
+}
+impl From<GameStageState<Howto>> for GameStageStateMachine {
+    fn from(state: GameStageState<Howto>) -> Self {
+        GameStageStateMachine::Howto(state)
     }
 }
 impl From<GameStageState<Playing>> for GameStageStateMachine {
@@ -95,33 +111,62 @@ struct GameStageState<T> {
     material: Material,
 }
 
+// Ready
 struct Ready;
 impl GameStageState<Ready> {
     fn new(material: Material) -> GameStageState<Ready> {
         GameStageState { _state: Ready, material,}
     }
-    fn start_running(self) -> GameStageState<Playing> {
-        GameStageState { _state: Playing, material: self.material,}
+    fn start_howto(self) -> GameStageState<Howto> {
+        GameStageState { _state: Howto, material: self.material,}
     }
     fn update(self, _keystate: &KeyState, _touchstate: &TouchState) -> ReadyEndState {
         if _keystate.is_pressed("Space") || _touchstate.touch_pressed() == "Space"{
-            return ReadyEndState::Complete(self.start_running());
+            return ReadyEndState::Complete(self.start_howto());
         }
         ReadyEndState::Continue(self)
     }
 }
 enum ReadyEndState {
-    Complete(GameStageState<Playing>),
+    Complete(GameStageState<Howto>),
     Continue(GameStageState<Ready>),
 }
 impl From<ReadyEndState> for GameStageStateMachine {
     fn from(state: ReadyEndState) -> Self {
         match state {
-            ReadyEndState::Complete(running) => running.into(),
+            ReadyEndState::Complete(howto) => howto.into(),
             ReadyEndState::Continue(ready) => ready.into(),
         }
     }
 }
+
+// Howto
+struct Howto;
+impl GameStageState<Howto> {
+    fn start_running(self) -> GameStageState<Playing> {
+        GameStageState { _state: Playing, material: self.material,}
+    }
+    fn update(self, _keystate: &KeyState, _touchstate: &TouchState) -> HowtoEndState {
+        if _keystate.is_pressed("Space") || _touchstate.touch_pressed() == "Space"{
+            return HowtoEndState::Complete(self.start_running());
+        }
+        HowtoEndState::Continue(self)
+    }
+}
+enum HowtoEndState {
+    Complete(GameStageState<Playing>),
+    Continue(GameStageState<Howto>),
+}
+impl From<HowtoEndState> for GameStageStateMachine {
+    fn from(state: HowtoEndState) -> Self {
+        match state {
+            HowtoEndState::Complete(running) => running.into(),
+            HowtoEndState::Continue(howto) => howto.into(),
+        }
+    }
+}
+
+// Focusting
 struct Focusing;
 impl GameStageState<Focusing> {
    fn start_running(mut self) -> GameStageState<Playing> {
@@ -618,6 +663,159 @@ impl Game for GameStage {
                     OPENING_MESSAGE,
                     'c',
                     18,
+                    'd',
+                );
+            }
+            Some(GameStageStateMachine::Howto(_state)) => {
+                renderer.polygon(
+                    &Point{x: 400.0, y:125.0},
+                    &Point{x:525.0, y:0.0},
+                    &Point{x: 525.0, y: 600.0},
+                    &Point{x: 400.0, y: 475.0},
+                    &'l'
+                );
+                renderer.polygon(
+                    &Point{x: -75.0, y:0.0},
+                    &Point{x:50.0, y:125.0},
+                    &Point{x: 50.0, y: 475.0},
+                    &Point{x: -75.0, y: 600.0},
+                    &'l'
+                );
+                renderer.polygon(
+                    &Point{x: 325.0, y:200.0},
+                    &Point{x:400.0, y:125.0},
+                    &Point{x: 400.00, y: 475.0},
+                    &Point{x: 325.0, y: 400.0},
+                    &'m'
+                );
+                renderer.polygon(
+                    &Point{x: 50.0, y:125.0},
+                    &Point{x:125.0, y:200.0},
+                    &Point{x: 125.0, y: 400.0},
+                    &Point{x: 50.0, y: 475.0},
+                    &'m'
+                );
+                // FORWARD
+                renderer.rect(
+                    &Point{x: 140.0, y:0.0},
+                    180.0,
+                    200.0,
+                    LIGHT_GREEN_COLOR,
+                    0.3
+                );
+                //LEFT
+                renderer.rect(
+                    &Point{x: 0.0, y:200.0},
+                    140.0,
+                    200.0,
+                    LIGHT_GREEN_COLOR,
+                    0.2
+                );
+                //RIGHT
+                renderer.rect(
+                    &Point{x: 310.0, y:200.0},
+                    140.0,
+                    200.0,
+                    LIGHT_GREEN_COLOR,
+                    0.2
+                );
+                //BACK
+                renderer.rect(
+                    &Point{x: 140.0, y:400.0},
+                    180.0,
+                    200.0,
+                    LIGHT_GREEN_COLOR,
+                    0.3
+                );
+
+                renderer.text(
+                    &Point {
+                        x: HOWTO_MESSAGE_T_X,
+                        y: HOWTO_MESSAGE_T_Y,
+                    },
+                    HOWTO_MESSAGE_T,
+                    'c',
+                    20,
+                    'd',
+                );
+                renderer.text(
+                    &Point {
+                        x: HOWTO_MESSAGE_F_X,
+                        y: HOWTO_MESSAGE_F_Y,
+                    },
+                    HOWTO_MESSAGE_F,
+                    'c',
+                    20,
+                    'd',
+                );
+                renderer.text(
+                    &Point {
+                        x: HOWTO_MESSAGE_F_X + 0.0,
+                        y: HOWTO_MESSAGE_F_Y + 30.0,
+                    },
+                    "🢁",
+                    'c',
+                    20,
+                    'd',
+                );
+                renderer.text(
+                    &Point {
+                        x: HOWTO_MESSAGE_L_X,
+                        y: HOWTO_MESSAGE_L_Y,
+                    },
+                    HOWTO_MESSAGE_L,
+                    'c',
+                    20,
+                    'd',
+                );
+                renderer.text(
+                    &Point {
+                        x: HOWTO_MESSAGE_R_X,
+                        y: HOWTO_MESSAGE_R_Y,
+                    },
+                    HOWTO_MESSAGE_R,
+                    'c',
+                    20,
+                    'd',
+                );
+                renderer.text(
+                    &Point {
+                        x: HOWTO_MESSAGE_B_X,
+                        y: HOWTO_MESSAGE_B_Y,
+                    },
+                    HOWTO_MESSAGE_B,
+                    'c',
+                    20,
+                    'd',
+                );
+                renderer.text(
+                    &Point {
+                        x: HOWTO_MESSAGE_B_X + 0.0,
+                        y: HOWTO_MESSAGE_B_Y + 30.0,
+                    },
+                    "🢃",
+                    'c',
+                    20,
+                    'd',
+                );
+                renderer.text(
+                    &Point {
+                        x: HOWTO_MESSAGE_S_X,
+                        y: HOWTO_MESSAGE_S_Y,
+                    },
+                    HOWTO_MESSAGE_S,
+                    'c',
+                    20,
+                    'd',
+                );
+                renderer.text(
+                    &Point {
+                        x: HOWTO_MESSAGE_S_X,
+                        y: HOWTO_MESSAGE_S_Y + 40.0,
+                    },
+                    "[SPACE]",
+                    'c',
+                    14,
                     'd',
                 );
             }
