@@ -5,6 +5,7 @@ body{
 }
 
 canvas {
+    max-width:980px;
     border: 2px solid green;
     background-color: black;
 }
